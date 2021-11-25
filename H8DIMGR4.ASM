@@ -34,9 +34,11 @@ START   EQU     *
         CALL    $TYPTX
         DB      0AH,'H8DIMGR4 2021 BY LES BIRD',0AH
         DB      'USE WITH H8DUTILITY V3 OR LATER',0AH,0AH
+        DB      'CONNECT TO PORT 340Q AT 38,400 BAUD',0AH
         DB      'CONFIGURE SYSTEM AS FOLLOWS:',0AH
         DB      'SY0: 40 TRACK DOUBLE SIDED',0AH
-        DB      'SY1: 80 TRACK DOUBLE SIDED',8AH
+        DB      'SY1: 80 TRACK DOUBLE SIDED',0AH
+        DB      80H
         CALL    INIT34
         CALL    DMALL           DISMOUNT ALL DRIVES
         CALL    D.ABORT         SEEK TO TRACK 0
@@ -143,6 +145,10 @@ CMDL    EQU     *
         JZ      SET1S8
         CPI     '7'
         JZ      SET2S8
+        CPI     'A'
+        JZ      CMDX2
+        CPI     'B'
+        JZ      CMDX2
         CPI     'V'
         JZ      SETVOL
         CPI     'C'
@@ -167,6 +173,7 @@ CMDA    EQU     *
 *
 CMDX    EQU     *
         POP     PSW
+CMDX2   EQU     *
         CALL    OUT340
         JMP     CMDL
 *
@@ -240,7 +247,6 @@ CHKVOL  EQU     *
         PUSH    PSW
         CALL    $TYPTX
         DB      'GET HDOS DISK VOLUME',8AH
-        CALL    SETS1
         XRA     A
         STA     D.TT
         STA     D.TS
@@ -258,18 +264,15 @@ GETVOL  EQU     *
         PUSH    PSW
         CALL    $TYPTX
         DB      'GET DISK HEADER VOLUME',8AH
-        CALL    SETS1
         CALL    GETHDR
         CALL    OUT340
         CALL    D.ABORT
         JMP     CMDX
 *
 GETHDR  EQU     *
-        MVI     A,TARTRK
-        STA     D.TT
         CALL    D.SDP
-        CALL    D.SDT           KILLS 362Q BECAUSE D.STS
-        CALL    D.STS           KILLS 362Q
+        CALL    D.SDT
+        CALL    D.STS
         CALL    D.WSC           WAIT FOR SYNC CHAR
         CALL    D.RDB           READ VOLUME NUM
         STA     HDRVOL
@@ -304,15 +307,17 @@ SETS2   EQU     *
         RET
 * GET DISK HEADER TRACK
 GETTRK  EQU     *
+        MVI     A,TARTRK
+        STA     D.TT
         CALL    GETHDR
-        LDA     HDRTRK
-        ADI     '0'
-        CALL    OUT350
-        LDA     HDRSEC
-        ADI     '0'
-        CALL    OUT350
-        MVI     A,20H
-        CALL    OUT350
+*       LDA     HDRTRK
+*       ADI     '0'
+*       CALL    OUT350
+*       LDA     HDRSEC
+*       ADI     '0'
+*       CALL    OUT350
+*       MVI     A,20H
+*       CALL    OUT350
         LDA     HDRTRK
         CPI     TARTRK
         JZ      SIDES1          SINGLE SIDED DISK
@@ -376,7 +381,6 @@ QUERYE  EQU     *
 RDIMG   EQU     *
         CALL    $TYPTX
         DB      'READ IMAGE',8AH
-        CALL    SETS1           SET SIDE 1
         LHLD    D.VOLPT
         XRA     A
         MOV     M,A             SET VOLUME 0
@@ -413,8 +417,10 @@ RDIMG2  EQU     *               SEND TO HOST
         MVI     A,'.'
         CALL    OUT350
         LDA     D.TT
-        CPI     80
+        CPI     79
         JNZ     RDIMG3
+        MVI     A,'.'
+        CALL    OUT350
         MVI     A,0DH
         CALL    OUT350
         MVI     A,0AH
@@ -458,11 +464,186 @@ RDIMGE  EQU     *
         JMP     RDIMGX
 *
 WRIMG   EQU     *
-        CALL    OUT340          ACK COMMAND
         CALL    $TYPTX
         DB      'WRITE IMAGE',8AH
+        LXI     H,0
+        SHLD    BLKNUM
+        XRA     A
+        STA     D.TT
+        CALL    D.SDP
+        CALL    D.STZ
+WRIMGL  EQU     *
+        MVI     A,'R'
+        CALL    OUT350
+        CALL    IN340           WAIT FOR 'W' COMMAND
+        CPI     'W'
+        JNZ     WRIMGX
+        LXI     B,BUFSIZ
+        LXI     H,TRKBUF
+        DI
+WRIMG1  EQU     *
+        CALL    IN340
+        MOV     M,A
+        INX     H
+        DCX     B
+        MOV     A,C
+        ORA     B
+        JNZ     WRIMG1
+        EI
+        MVI     A,08H
+        CALL    OUT350
+        LDA     D.TT
+        MOV     C,A
+        ORA     A
+        JZ      WRIMG2
+        LDA     HDRVOL
+        MOV     B,A
+WRIMG2  EQU     *
+        LHLD    D.VOLPT
+        MOV     M,B
+        CALL    FTRK
+        CALL    WRBUF
+        JC      WRIMGE
+        MVI     A,'.'
+        CALL    OUT350
+        LDA     D.TT
+        INR     A
+        STA     D.TT
+        CPI     79
+        JNZ     WRIMG3
+        MVI     A,'.'
+        CALL    OUT350
+        MVI     A,0DH
+        CALL    OUT350
+        MVI     A,0AH
+        CALL    OUT350
+WRIMG3  EQU     *
+        MVI     A,'W'
+        CALL    OUT340
+        LHLD    BLKNUM
+        LXI     D,10
+        DAD     D
+        SHLD    BLKNUM
+        LDA     DSKTYP
+        LXI     D,-190H
+        ORA     A
+        JZ      WRIMG4
+        LXI     D,-320H
+        DCR     A
+        JZ      WRIMG4
+        LXI     D,-320H
+        DCR     A
+        JZ      WRIMG4
+        LXI     D,-640H
+WRIMG4  EQU     *
+        DAD     D
+        MOV     A,L
+        ORA     H
+        JZ      WRIMGX
+        JMP     WRIMGL
+WRIMGE  EQU     *
+        MVI     A,'?'
+        CALL    OUT340
+        MVI     A,'E'
+        CALL    OUT350
+WRIMGX  EQU     *
+        CALL    D.ABORT
         JMP     CMD
-* DECODE TRACK SECTOR (BASED ON ROM CODE)
+*
+WRBUF   EQU     *
+        MVI     A,'W'
+        CALL    OUT350
+        LXI     B,BUFSIZ
+        LXI     D,TRKBUF
+        LHLD    BLKNUM
+        MVI     A,2
+        STA     D.DLYHS
+        CALL    D.WRITE
+        PUSH    PSW             SAVE (C) FLAG
+        MVI     A,8
+        CALL    OUT350
+        POP     PSW
+        RET
+* FORMATS TRACK ON THE FLY (B=VOL, C=TRK)
+FTRK    EQU     *
+        DI
+        MVI     A,'F'
+        CALL    OUT350
+        XRA     A
+        STA     D.DVCTL
+        STA     D.DLYMO
+        EI
+        PUSH    B               SAVE VOL,TRK
+        CALL    D.SDP
+        CALL    D.SDT           DI
+        XRA     A
+        OUT     UP.SC
+        LDA     D.DVCTL
+        INR     A
+        OUT     DP.DC           TURN ON WRITE GATE
+        MVI     A,2
+        STA     D.DLYHS
+FTRK1   EQU     *
+        CALL    D.STS
+        LDA     D.DLYHS
+        ANA     A
+        JNZ     FTRK1
+        LHLD    SECSKEW
+        POP     B               RESTORE VOL,TRK
+FTRKL   EQU     *
+        PUSH    B               SAVE VOL,TRK
+        MVI     C,0AH           WRITE SECTOR HEADER
+        CALL    D.WSP1
+        POP     B               RESTORE VOL.TRK
+        MOV     A,B             WRITE VOLUME NUM
+        CALL    D.WNB
+        MOV     A,C             WRITE TRACK NUM
+        CALL    D.WNB
+        MOV     A,M             WRITE SECTOR NUM
+        CALL    D.WNB
+        MOV     A,D             WRITE CHECKSUM
+        CALL    D.WNB
+        PUSH    B               SAVE VOL,TRK
+        MVI     C,10H
+        CALL    D.WSP1
+        XRA     A
+        MOV     C,A
+FTRK2   EQU     *               WRITE SECTOR DATA
+        MOV     A,M
+        CALL    D.WNB
+        DCR     C
+        JNZ     FTRK2
+        MOV     A,D
+        CALL    D.WNB           WRITE CHECKSUM 3 TIMES
+        CALL    D.WNB
+        CALL    D.WNB
+FTRK3   EQU     *               WRITE ZEROS UNTIL END
+        XRA     A
+        CALL    D.WNB
+        IN      DP.DC
+        RAR
+        JNC     FTRK3
+        POP     B               RESTORE TRK,VOL
+        INX     H               POINT TO NEXT SECTOR NUM
+        MOV     A,M
+        ORA     A               MORE SECTORS?
+        JNZ     FTRKL           YES, REPEAT PATTERN
+        LDA     D.DVCTL
+        OUT     DP.DC           WRITE GATE OFF
+        CALL    D.XOK           EI
+        MVI     A,8
+        CALL    OUT350
+        RET
+*
+D.WSP1  EQU     *
+        XRA     A
+        CALL    D.WNB
+        DCR     C
+        JNZ     D.WSP1
+        MVI     A,C.DSYN
+        MOV     D,A
+        JMP     D.WNB
+* DECODE TRACK SECTOR MODIFIED FOR DOUBLE SIDE DISKS
 DDTS    EQU     *
         PUSH    B
         LXI     B,-10
@@ -476,7 +657,7 @@ DDTS1   EQU     *
         ADI     10
         STA     D.TS
         POP     B
-* SEEK DESIRED TRACK (BASED ON ROM CODE)
+* SEEK DESIRED TRACK MODIFIED FOR DOUBLE SIDE DISKS
 DSDT    EQU     *
         LDA     D.TT
         MOV     C,A
@@ -537,11 +718,16 @@ HDRTRK  DB      0
 HDRSEC  DB      0
 HDRCHK  DB      0
 *
+SECSKEW DW      SEC1
+SEC1    DB      0,1,2,3,4,5,6,7,8,9,0
+SEC2    DB      0,2,4,6,8,1,3,5,7,9,0
+SEC3    DB      0,3,6,9,2,5,8,1,4,7,0
+*
 SY0     DB      'SY0:',0
 SY1     DB      'SY1:',0
 SY2     DB      'SY2:',0
 *
 BLKNUM  DW      0
-TRKBUF  DS      BUFSIZ          2560 BYTE TRACK BUFFER
+TRKBUF  DS      BUFSIZ          TRACK BUFFER
 *
         END     START
