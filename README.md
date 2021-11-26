@@ -5,7 +5,7 @@ A utility written in 8080 ASM to send and receive disk images from a PC/Mac runn
 
 H8DIMGR2.ASM - deprecated<br>
 H8DIMGR3.ASM - deprecated<br>
-H8DIMGR4.ASM - current WIP
+H8DIMGR4.ASM - current
 
 On the Heathkit H8/H89 computer assemble the source file as follows<br>
 Requires all supporting ACM files to be on the drive where H8DIMGR4.ASM resides<br>
