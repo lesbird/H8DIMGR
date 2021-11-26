@@ -454,6 +454,8 @@ RDIMG4  EQU     *
         CALL    OUT340
         JMP     RDIMG1
 RDIMGX  EQU     *
+        MVI     A,'.'
+        CALL    OUT350
         MVI     A,'R'
         CALL    OUT340
         CALL    D.ABORT
@@ -547,6 +549,8 @@ WRIMGE  EQU     *
         MVI     A,'E'
         CALL    OUT350
 WRIMGX  EQU     *
+        MVI     A,'.'
+        CALL    OUT350
         CALL    D.ABORT
         JMP     CMD
 *
