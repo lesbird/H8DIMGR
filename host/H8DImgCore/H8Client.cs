@@ -23,8 +23,13 @@ public sealed class H8Client : IDisposable
     const int CommandTimeoutMs = 5000;
     const int DiskTimeoutMs = 20000;    // track read, query, format+write
     const byte AbortByte = (byte)'A';   // any byte other than 'R'/'W' mid-transfer
+    const int CommandSettleMs = 50;
+    const int MaxStrayBytes = 16;
 
     readonly SerialPort port;
+
+    // Receives protocol warnings, such as stray bytes that were discarded
+    public Action<string>? Log { get; set; }
 
     public string PortName => port.PortName;
 
@@ -95,8 +100,8 @@ public sealed class H8Client : IDisposable
 
     public void SetVolume(byte volume)
     {
-        Send((byte)'V', volume);
-        Expect((byte)'V', CommandTimeoutMs);
+        SendCommand((byte)'V', volume);
+        ExpectEcho((byte)'V');
     }
 
     // Returns the detected type, or null if the client could not identify the
@@ -104,8 +109,8 @@ public sealed class H8Client : IDisposable
     // which RDIMG uses for tracks 1 and up.
     public DiskType? Query()
     {
-        Send((byte)'Q');
-        Expect((byte)'Q', CommandTimeoutMs);
+        SendCommand((byte)'Q');
+        ExpectEcho((byte)'Q');
         byte t = ReadByte(DiskTimeoutMs);
         return t <= 3 ? (DiskType)t : null;
     }
@@ -114,9 +119,9 @@ public sealed class H8Client : IDisposable
     // for HDOS disks.
     public byte GetHdosVolume()
     {
-        Send((byte)'C');
+        SendCommand((byte)'C');
         byte vol = ReadByte(DiskTimeoutMs);
-        Expect((byte)'C', CommandTimeoutMs);
+        ExpectEcho((byte)'C');
         return vol;
     }
 
@@ -152,7 +157,7 @@ public sealed class H8Client : IDisposable
         int tracks = DiskTypes.Tracks(type);
         var image = new byte[tracks * DiskTypes.TrackSize];
 
-        Send((byte)'R');
+        SendCommand((byte)'R');
         for (int t = 0; t < tracks; t++)
         {
             if (cancel.IsCancellationRequested)
@@ -182,7 +187,7 @@ public sealed class H8Client : IDisposable
             throw new ArgumentException($"Image is {image.Length} bytes, expected {tracks * DiskTypes.TrackSize} for {DiskTypes.Name(type)}");
         }
 
-        Send((byte)'W');
+        SendCommand((byte)'W');
         cancel.WaitHandle.WaitOne(startDelayMs);
 
         var packet = new byte[DiskTypes.TrackSize + 1];
@@ -221,9 +226,58 @@ public sealed class H8Client : IDisposable
 
     void Echo(byte cmd)
     {
-        Send(cmd);
-        Expect(cmd, CommandTimeoutMs);
+        SendCommand(cmd);
+        ExpectEcho(cmd);
     }
+
+    // Sends a command to H8DIMGR4's command loop. The client never transmits
+    // on its own there, so anything already waiting is a stray byte (a late
+    // or duplicated echo) that would otherwise be taken as this command's
+    // reply. Pause briefly so late bytes arrive, then discard them.
+    void SendCommand(params byte[] data)
+    {
+        Thread.Sleep(CommandSettleMs);
+        int waiting = port.BytesToRead;
+        if (waiting > 0)
+        {
+            var stray = new byte[waiting];
+            int n = port.Read(stray, 0, waiting);
+            Log?.Invoke($"Discarded {n} stray byte(s) before '{(char)data[0]}': {Hex(stray.AsSpan(0, n))}");
+        }
+        Send(data);
+    }
+
+    // Waits for a command echo, skipping (and logging) stray bytes ahead of
+    // it. '?' means H8DIMGR4 didn't recognize the command.
+    void ExpectEcho(byte expected)
+    {
+        long deadline = Environment.TickCount64 + CommandTimeoutMs;
+        var skipped = new List<byte>();
+        while (true)
+        {
+            byte b = ReadByte((int)Math.Max(1, deadline - Environment.TickCount64));
+            if (b == expected)
+            {
+                if (skipped.Count > 0)
+                {
+                    Log?.Invoke($"Skipped {skipped.Count} stray byte(s) before '{(char)expected}' echo: {Hex(skipped.ToArray())}");
+                }
+                return;
+            }
+            if (b == '?')
+            {
+                throw new ProtocolException($"H8DIMGR4 did not recognize command '{(char)expected}'");
+            }
+            skipped.Add(b);
+            if (skipped.Count >= MaxStrayBytes)
+            {
+                throw new ProtocolException($"Expected '{(char)expected}' but got {Hex(skipped.ToArray())}");
+            }
+        }
+    }
+
+    static string Hex(ReadOnlySpan<byte> bytes) =>
+        string.Join(" ", bytes.ToArray().Select(b => b is >= 0x20 and < 0x7F ? $"{b:X2}('{(char)b}')" : $"{b:X2}"));
 
     void Send(params byte[] data) => port.Write(data, 0, data.Length);
 

@@ -106,7 +106,7 @@ static int Write(Options o)
 static H8Client Connect(Options o)
 {
     var port = o.Port ?? throw new UsageException("--port is required");
-    var client = new H8Client(port, o.Baud);
+    var client = new H8Client(port, o.Baud) { Log = msg => Console.Error.WriteLine($"warning: {msg}") };
     try
     {
         client.Probe();

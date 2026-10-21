@@ -97,7 +97,7 @@ public partial class MainWindow : Window
         {
             client = await Task.Run(() =>
             {
-                var c = new H8Client(port, baud);
+                var c = new H8Client(port, baud) { Log = msg => Ui(() => Log(msg, LogLevel.Warn)) };
                 try
                 {
                     c.Probe();
