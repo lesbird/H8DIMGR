@@ -38,3 +38,92 @@ dotnet run --project H8DImgHost -- write disk.h8d --port COM3 --drive 1 --type 1
 ```
 
 Reads auto-detect the disk type and volume. Writes infer the type from the image size (204,800 bytes is 2S40T on SY0: and 1S80T on SY1:) and the volume from the HDOS label. Override either with the format/volume settings (`--type` / `--volume`). Cancel stops between tracks and returns H8DIMGR4 to its command prompt.
+
+## Host protocol flow
+
+Every operation goes through `H8Client` (`host/H8DImgCore/H8Client.cs`), so the GUI and the command line send the same bytes. All traffic is on port 340Q at 38,400 baud, 8 data bits, no parity, 2 stop bits.
+
+### Connect
+
+| Host sends | H8DIMGR4 does | Host expects |
+|---|---|---|
+| opens the port, clears buffers | | |
+| `A` | echoes it (no-op command) | `A` within 1.5 s |
+
+If `A` doesn't come back, the host retries up to 3 times. The retry also recovers an H8 left in the middle of a transfer by an interrupted session: the first stray byte sends it back to its command loop. The port then stays open until Disconnect.
+
+Every operation below starts by selecting the drive:
+
+| Host sends | H8DIMGR4 does | Host expects |
+|---|---|---|
+| `0` or `1` | selects SY0: or SY1: | the same byte echoed |
+
+### Query disk
+
+| Host sends | H8DIMGR4 does | Host expects |
+|---|---|---|
+| `Q` | echoes `Q`, seeks to cylinder 4 side 0 and reads a sector header | `Q` |
+| | header track 4 means single-sided, 8 or 9 means double-sided; the drive decides 40 or 80 tracks | type byte `0`-`3`, or `FF` if it couldn't tell |
+| `C` | reads track 0 and returns byte 0x900, the HDOS label volume | volume byte, then `C` |
+
+Query also loads H8DIMGR4's volume setting from the track 4 header, which a read depends on.
+
+### Read disk to image
+
+1. **Setup:**
+   - The host sends `Q` (as above) to detect the type and load the volume.
+   - If a format was chosen, it sends `4`-`7` (1S40/2S40/1S80/2S80) and waits for the echo.
+   - If a volume was entered, it sends `V` plus the volume byte and waits for `V`.
+   - If detection failed and no volume was entered, it sends `V` with volume 0 and logs a warning.
+2. **Transfer:**
+   ```
+   Host -> R                        (enter read mode, no reply)
+   loop for each logical track (40 / 80 / 80 / 160):
+       Host -> R                    (request next track)
+       H8   -> 2560 bytes           (10 sectors x 256)
+       H8   -> R                    (track done)
+   ```
+   H8DIMGR4 reads track 0 with volume 0 and later tracks with the header volume. On double-sided disks, logical track N is cylinder N/2, side N%2. After the last track it seeks to track 0 and returns to its command loop.
+3. The host saves the image to the file.
+
+### Write image to disk
+
+1. **Format:** the one chosen, or worked out from the file size:
+   - 102,400 bytes is 1S40
+   - 204,800 bytes is 2S40 on SY0: or 1S80 on SY1:
+   - 409,600 bytes is 2S80
+2. **Volume:** the one entered, otherwise byte 0x900 if the image has a valid HDOS label, otherwise 0.
+3. **Setup:** select the drive, then send `4`-`7` (type) and `V` plus the volume, waiting for each echo.
+4. **Transfer:**
+   ```
+   Host -> W                        (enter write mode, no reply)
+   Host waits the start delay       (default 2 s; H8DIMGR4 is seeking to
+                                     track 0 and syncing; the 8250 has no
+                                     FIFO, so data sent now would be lost)
+   loop for each logical track:
+       Host -> W + 2560 bytes
+       H8: formats the track (headers carry volume and track number),
+           then writes the 10 sectors
+       H8   -> W                    (success)  or  ?  (disk error, host stops)
+   ```
+   H8DIMGR4 writes volume 0 on track 0 and the chosen volume on the other tracks.
+
+### Cancel
+
+Cancel takes effect between tracks, not in the middle of one.
+
+| During | Host sends | H8DIMGR4 does |
+|---|---|---|
+| Read | `A` instead of the next `R` | treats it as abort, replies `R`, returns to its command loop |
+| Write | `A` instead of the next `W` | aborts without a reply, returns to its command loop |
+
+The host waits 0.5 s and discards anything received. H8DIMGR4 is then ready for the next command without a restart.
+
+### Timeouts and errors
+
+| Situation | Timeout |
+|---|---|
+| Command echoes | 5 s |
+| Query, track read, track format + write | 20 s each |
+
+On a timeout the GUI marks the current track red and suggests restarting H8DIMGR4. A serial port error disconnects the GUI. The serial data itself is not checksummed, so a corrupted byte on the line goes into the image or onto the disk undetected.
