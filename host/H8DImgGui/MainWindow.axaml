@@ -1,0 +1,350 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:H8DImgGui"
+        x:Class="H8DImgGui.MainWindow"
+        Title="H8DIMGR Host"
+        Width="1060" Height="780" MinWidth="880" MinHeight="640"
+        Background="{DynamicResource WindowBg}">
+
+  <Window.Styles>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{DynamicResource CardBg}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="16,14" />
+    </Style>
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
+      <Setter Property="Margin" Value="0,0,0,12" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
+    </Style>
+    <Style Selector="Button.action">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="Padding" Value="0,9" />
+    </Style>
+    <Style Selector="ComboBox, TextBox, NumericUpDown">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+
+    <!-- Stats -->
+    <Style Selector="TextBlock.statLabel">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
+    </Style>
+    <Style Selector="TextBlock.statValue">
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontFamily" Value="{DynamicResource MonoFont}" />
+    </Style>
+
+    <!-- Track map -->
+    <Style Selector="Border.cell">
+      <Setter Property="Height" Value="16" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Margin" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource CellPending}" />
+    </Style>
+    <Style Selector="Border.cell.done">
+      <Setter Property="Background" Value="{DynamicResource CellDone}" />
+    </Style>
+    <Style Selector="Border.cell.error">
+      <Setter Property="Background" Value="{DynamicResource CellError}" />
+    </Style>
+    <Style Selector="Border.cell.active">
+      <Setter Property="Background" Value="{DynamicResource CellActive}" />
+      <Style.Animations>
+        <Animation Duration="0:0:0.7" IterationCount="Infinite" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%">
+            <Setter Property="Opacity" Value="1" />
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Opacity" Value="0.35" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Border.swatch">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="10" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,5,0" />
+    </Style>
+
+    <!-- Log -->
+    <Style Selector="TextBlock.logTime">
+      <Setter Property="FontFamily" Value="{DynamicResource MonoFont}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
+      <Setter Property="Margin" Value="0,0,14,0" />
+    </Style>
+    <Style Selector=":is(TextBlock).logText">
+      <Setter Property="FontFamily" Value="{DynamicResource MonoFont}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector=":is(TextBlock).logText.detail">
+      <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
+    </Style>
+    <Style Selector=":is(TextBlock).logText.success">
+      <Setter Property="Foreground" Value="{DynamicResource SuccessText}" />
+    </Style>
+    <Style Selector=":is(TextBlock).logText.warn">
+      <Setter Property="Foreground" Value="{DynamicResource WarnText}" />
+    </Style>
+    <Style Selector=":is(TextBlock).logText.error">
+      <Setter Property="Foreground" Value="{DynamicResource ErrorText}" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel>
+
+    <!-- Header -->
+    <Border DockPanel.Dock="Top" Background="{DynamicResource CardBg}"
+            BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1"
+            Padding="20,14">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="2">
+          <TextBlock Text="H8DIMGR Host" FontSize="20" FontWeight="SemiBold" />
+          <TextBlock Classes="muted" FontSize="12"
+                     Text="Heathkit H8 / H89 disk image transfer  ·  talks to H8DIMGR4 over serial" />
+        </StackPanel>
+        <Border Grid.Column="1" Background="{DynamicResource PillBg}" CornerRadius="14"
+                Padding="12,6" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Ellipse x:Name="StatusDot" Width="9" Height="9" VerticalAlignment="Center" />
+            <TextBlock x:Name="StatusText" FontSize="12" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Border>
+
+    <Grid ColumnDefinitions="300,16,*" Margin="16">
+
+      <!-- Left: settings and actions -->
+      <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12">
+
+          <Border Classes="card">
+            <StackPanel>
+              <TextBlock Classes="section" Text="CONNECTION" />
+              <Grid ColumnDefinitions="*,6,Auto" RowDefinitions="Auto,Auto">
+                <TextBlock Classes="label" Text="Serial port" />
+                <ComboBox Grid.Row="1" x:Name="PortBox" PlaceholderText="No ports found" />
+                <Button Grid.Row="1" Grid.Column="2" x:Name="RefreshButton" Padding="9"
+                        Click="OnRefreshPorts" ToolTip.Tip="Rescan serial ports"
+                        VerticalAlignment="Stretch">
+                  <PathIcon Width="13" Height="13"
+                            Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" />
+                </Button>
+              </Grid>
+              <Grid ColumnDefinitions="96,8,*" RowDefinitions="Auto,Auto" Margin="0,10,0,0">
+                <TextBlock Classes="label" Text="Baud" />
+                <ComboBox Grid.Row="1" x:Name="BaudBox" />
+                <Button Grid.Row="1" Grid.Column="2" x:Name="ConnectButton" Classes="action accent"
+                        VerticalAlignment="Stretch" Click="OnConnect" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="card">
+            <StackPanel x:Name="DiskPanel">
+              <TextBlock Classes="section" Text="DISK" />
+              <TextBlock Classes="label" Text="Drive" />
+              <StackPanel Orientation="Horizontal" Spacing="16">
+                <RadioButton x:Name="Sy0Radio" GroupName="drive" IsChecked="True">
+                  <StackPanel>
+                    <TextBlock Text="SY0:" FontWeight="SemiBold" />
+                    <TextBlock Text="40 track" Classes="muted" FontSize="11" />
+                  </StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="Sy1Radio" GroupName="drive">
+                  <StackPanel>
+                    <TextBlock Text="SY1:" FontWeight="SemiBold" />
+                    <TextBlock Text="80 track" Classes="muted" FontSize="11" />
+                  </StackPanel>
+                </RadioButton>
+              </StackPanel>
+              <TextBlock Classes="label" Text="Format" Margin="0,12,0,4" />
+              <ComboBox x:Name="TypeBox" />
+              <Grid ColumnDefinitions="80,10,*" RowDefinitions="Auto,Auto" Margin="0,12,0,0">
+                <TextBlock Classes="label" Text="Volume" />
+                <TextBlock Grid.Column="2" Classes="label" Text="Write start delay (ms)" />
+                <TextBox Grid.Row="1" x:Name="VolumeBox" PlaceholderText="Auto" MaxLength="3"
+                         ToolTip.Tip="0-255, or blank to use the disk header / HDOS label" />
+                <NumericUpDown Grid.Row="1" Grid.Column="2" x:Name="DelayBox" Minimum="0"
+                               Maximum="10000" Increment="250" Value="2000" FormatString="0"
+                               ToolTip.Tip="Time for H8DIMGR4 to seek and sync before the first track is sent" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="section" Text="ACTIONS" Margin="0,0,0,4" />
+              <Button x:Name="QueryButton" Classes="action" Click="OnQuery"
+                      Content="Query Disk"
+                      ToolTip.Tip="Detect the disk format in the selected drive" />
+              <Button x:Name="ReadButton" Classes="action" Click="OnRead"
+                      Content="Read Disk  →  Image…"
+                      ToolTip.Tip="Copy the disk in the selected drive to an .h8d file" />
+              <Button x:Name="WriteButton" Classes="action" Click="OnWrite"
+                      Content="Write Image  →  Disk…"
+                      ToolTip.Tip="Format the disk and write an .h8d file to it" />
+              <Button x:Name="CancelButton" Classes="action" Click="OnCancel"
+                      Content="Cancel" Margin="0,4,0,0" />
+            </StackPanel>
+          </Border>
+
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Right: progress and log -->
+      <Grid Grid.Column="2" RowDefinitions="Auto,12,*">
+
+        <Border Classes="card">
+          <StackPanel>
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <TextBlock x:Name="OpTitle" FontSize="17" FontWeight="SemiBold" />
+                <TextBlock x:Name="OpDetail" Classes="muted" FontSize="12" Margin="0,2,0,0"
+                           TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+              <TextBlock x:Name="PercentText" Grid.Column="1" FontSize="26" FontWeight="SemiBold"
+                         FontFamily="{DynamicResource MonoFont}" VerticalAlignment="Center" />
+            </Grid>
+
+            <ProgressBar x:Name="Progress" Minimum="0" Maximum="100" Height="8"
+                         CornerRadius="4" Margin="0,14,0,16" />
+
+            <Grid ColumnDefinitions="*,*,*,*">
+              <StackPanel Grid.Column="0">
+                <TextBlock Classes="statLabel" Text="TRACK" />
+                <TextBlock x:Name="StatTrack" Classes="statValue" Text="–" />
+              </StackPanel>
+              <StackPanel Grid.Column="1">
+                <TextBlock Classes="statLabel" Text="THROUGHPUT" />
+                <TextBlock x:Name="StatSpeed" Classes="statValue" Text="–" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Classes="statLabel" Text="ELAPSED" />
+                <TextBlock x:Name="StatElapsed" Classes="statValue" Text="–" />
+              </StackPanel>
+              <StackPanel Grid.Column="3">
+                <TextBlock Classes="statLabel" Text="REMAINING" />
+                <TextBlock x:Name="StatEta" Classes="statValue" Text="–" />
+              </StackPanel>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,18,0,8">
+              <TextBlock Classes="statLabel" Text="TRACK MAP" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14">
+                <StackPanel Orientation="Horizontal">
+                  <Border Classes="swatch" Background="{DynamicResource CellPending}" />
+                  <TextBlock Classes="statLabel" Text="Pending" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                  <Border Classes="swatch" Background="{DynamicResource CellActive}" />
+                  <TextBlock Classes="statLabel" Text="In progress" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                  <Border Classes="swatch" Background="{DynamicResource CellDone}" />
+                  <TextBlock Classes="statLabel" Text="Done" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                  <Border Classes="swatch" Background="{DynamicResource CellError}" />
+                  <TextBlock Classes="statLabel" Text="Error" />
+                </StackPanel>
+              </StackPanel>
+            </Grid>
+
+            <!-- One row per side, one column per cylinder -->
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="statLabel" Text="Side 0" Margin="0,0,10,0"
+                         VerticalAlignment="Center" />
+              <ItemsControl Grid.Row="0" Grid.Column="1" x:Name="Side0Map">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Rows="1" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:TrackCell">
+                    <Border Classes="cell" Classes.active="{Binding IsActive}"
+                            Classes.done="{Binding IsDone}" Classes.error="{Binding IsError}"
+                            ToolTip.Tip="{Binding Tip}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock x:Name="Side1Label" Grid.Row="1" Classes="statLabel" Text="Side 1"
+                         Margin="0,0,10,0" VerticalAlignment="Center" />
+              <ItemsControl Grid.Row="1" Grid.Column="1" x:Name="Side1Map">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Rows="1" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:TrackCell">
+                    <Border Classes="cell" Classes.active="{Binding IsActive}"
+                            Classes.done="{Binding IsDone}" Classes.error="{Binding IsError}"
+                            ToolTip.Tip="{Binding Tip}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,*" Margin="1,4,1,0">
+                <TextBlock Classes="statLabel" Text="cyl 0" />
+                <TextBlock x:Name="LastCylLabel" Grid.Column="1" Classes="statLabel"
+                           HorizontalAlignment="Right" />
+              </Grid>
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Classes="card" Padding="0">
+          <DockPanel>
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="16,12,12,10">
+              <TextBlock Classes="section" Text="STATUS LOG" Margin="0" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                <Button Content="Copy" Padding="10,3" FontSize="12" Click="OnCopyLog" />
+                <Button Content="Clear" Padding="10,3" FontSize="12" Click="OnClearLog" />
+              </StackPanel>
+            </Grid>
+            <Border Background="{DynamicResource LogBg}" BorderBrush="{DynamicResource CardBorder}"
+                    BorderThickness="0,1,0,0" CornerRadius="0,0,10,10">
+              <ScrollViewer x:Name="LogScroll" Padding="16,10" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="LogList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:LogEntry">
+                      <Grid ColumnDefinitions="Auto,*" Margin="0,1">
+                        <TextBlock Classes="logTime" Text="{Binding Time}" />
+                        <SelectableTextBlock Grid.Column="1" Classes="logText"
+                                             Classes.detail="{Binding IsDetail}"
+                                             Classes.success="{Binding IsSuccess}"
+                                             Classes.warn="{Binding IsWarn}"
+                                             Classes.error="{Binding IsError}"
+                                             Text="{Binding Text}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+          </DockPanel>
+        </Border>
+
+      </Grid>
+    </Grid>
+  </DockPanel>
+</Window>

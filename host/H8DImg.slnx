@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="H8DImgCore/H8DImgCore.csproj" />
+  <Project Path="H8DImgGui/H8DImgGui.csproj" />
+  <Project Path="H8DImgHost/H8DImgHost.csproj" />
+</Solution>

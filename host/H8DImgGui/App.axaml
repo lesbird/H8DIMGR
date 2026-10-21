@@ -1,0 +1,46 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="H8DImgGui.App"
+             RequestedThemeVariant="Default">
+
+  <Application.Styles>
+    <FluentTheme />
+  </Application.Styles>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="WindowBg" Color="#F2F3F5" />
+          <SolidColorBrush x:Key="CardBg" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="CardBorder" Color="#E1E3E8" />
+          <SolidColorBrush x:Key="MutedText" Color="#6B7180" />
+          <SolidColorBrush x:Key="LogBg" Color="#F7F8FA" />
+          <SolidColorBrush x:Key="CellPending" Color="#E2E5EA" />
+          <SolidColorBrush x:Key="SuccessText" Color="#1A7F37" />
+          <SolidColorBrush x:Key="WarnText" Color="#9A6700" />
+          <SolidColorBrush x:Key="ErrorText" Color="#CF222E" />
+          <SolidColorBrush x:Key="PillBg" Color="#EEF0F3" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="WindowBg" Color="#15171C" />
+          <SolidColorBrush x:Key="CardBg" Color="#1E2128" />
+          <SolidColorBrush x:Key="CardBorder" Color="#2D313A" />
+          <SolidColorBrush x:Key="MutedText" Color="#9198A5" />
+          <SolidColorBrush x:Key="LogBg" Color="#121418" />
+          <SolidColorBrush x:Key="CellPending" Color="#2F333C" />
+          <SolidColorBrush x:Key="SuccessText" Color="#3FB950" />
+          <SolidColorBrush x:Key="WarnText" Color="#E3B341" />
+          <SolidColorBrush x:Key="ErrorText" Color="#F85149" />
+          <SolidColorBrush x:Key="PillBg" Color="#262A32" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+
+      <!-- Track map states; chosen to read on both light and dark cards -->
+      <SolidColorBrush x:Key="CellActive" Color="#E3A008" />
+      <SolidColorBrush x:Key="CellDone" Color="#2EA043" />
+      <SolidColorBrush x:Key="CellError" Color="#E5484D" />
+      <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace</FontFamily>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

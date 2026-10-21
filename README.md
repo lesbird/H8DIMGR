@@ -16,3 +16,25 @@ In HDOS 2 if ASM.ABS is in SY0: and H8DIMGR4.ASM is in drive SY1:<br>
 This will create H8DIMGR4.ABS on the SY1: drive
 
 H8DIMGR4.ASM has been completely rewritten from the ground up. The code has been cleaned up and all jump vectors are restored from the ULTIMETH HSY driver routines to the original ROM routines. Only the necessary jump vectors (D.DTS and D.SDT) are intercepted and overridden to support multisided disks.
+
+## H8DIMGR Host (C# GUI and command line)
+
+`host/` contains a cross-platform .NET 10 host that talks to H8DIMGR4 directly (an alternative to H8DUtility 3). It runs on Windows, macOS and Linux.
+
+- `H8DImgGui` - desktop app (Avalonia): connect, query, read and write with a live track map, throughput/ETA and a scrollable status log
+- `H8DImgHost` - command line tool (`h8dimghost`)
+- `H8DImgCore` - the shared H8DIMGR4 protocol code
+
+Prebuilt Windows, macOS and Linux versions (no .NET install needed) are on the [Releases](https://github.com/lesbird/H8DIMGR/releases) page.
+
+To start the GUI from the repository root, run `./run.sh` (macOS/Linux) or `run.cmd` (Windows).
+
+```
+cd host
+dotnet run --project H8DImgGui
+dotnet run --project H8DImgHost -- ports
+dotnet run --project H8DImgHost -- read  disk.h8d --port COM3 --drive 0
+dotnet run --project H8DImgHost -- write disk.h8d --port COM3 --drive 1 --type 1s80
+```
+
+Reads auto-detect the disk type and volume. Writes infer the type from the image size (204,800 bytes is 2S40T on SY0: and 1S80T on SY1:) and the volume from the HDOS label. Override either with the format/volume settings (`--type` / `--volume`). Cancel stops between tracks and returns H8DIMGR4 to its command prompt.
