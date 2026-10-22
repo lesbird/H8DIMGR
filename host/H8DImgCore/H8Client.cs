@@ -24,6 +24,7 @@ public sealed class H8Client : IDisposable
     const int DiskTimeoutMs = 20000;    // track read, query, format+write
     const byte AbortByte = (byte)'A';   // any byte other than 'R'/'W' mid-transfer
     const int CommandSettleMs = 50;
+    const int ReadStartDelayMs = 250;
     const int MaxStrayBytes = 16;
 
     readonly SerialPort port;
@@ -157,7 +158,10 @@ public sealed class H8Client : IDisposable
         int tracks = DiskTypes.Tracks(type);
         var image = new byte[tracks * DiskTypes.TrackSize];
 
+        // RDIMG types its banner on the console before polling 340Q; an 'R'
+        // sent right behind the command gets lost and both ends then wait.
         SendCommand((byte)'R');
+        Thread.Sleep(ReadStartDelayMs);
         for (int t = 0; t < tracks; t++)
         {
             if (cancel.IsCancellationRequested)
