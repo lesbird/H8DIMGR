@@ -25,6 +25,14 @@ H8DIMGR4.ASM has been completely rewritten from the ground up. The code has been
 - `H8DImgHost` - command line tool (`h8dimghost`)
 - `H8DImgCore` - the shared H8DIMGR4 protocol code
 
+Reading a double-sided disk, with the track map filling in as each track arrives:
+
+![H8DIMGR Host reading a 2S40T disk](docs/host-gui-reading.png)
+
+A finished write to SY0:
+
+![H8DIMGR Host after writing an image to SY0:](docs/host-gui-write-complete.png)
+
 Prebuilt Windows, macOS and Linux versions (no .NET install needed) are on the [Releases](https://github.com/lesbird/H8DIMGR/releases) page.
 
 To start the GUI from the repository root, run `./run.sh` (macOS/Linux) or `run.cmd` (Windows).
